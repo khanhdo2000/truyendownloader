@@ -22,6 +22,8 @@ except ImportError:
     sys.exit(1)
 
 import threading
+import socket
+import tempfile
 from truyenfull_downloader import TruyenFullDownloader
 try:
     from version import __version__
@@ -32,6 +34,59 @@ try:
     EPUB_AVAILABLE = True
 except ImportError:
     EPUB_AVAILABLE = False
+
+
+class SingleInstance:
+    """Ensure only one instance of the application runs at a time"""
+
+    def __init__(self, app_name='TruyenFullDownloader'):
+        self.app_name = app_name
+        self.lock_socket = None
+        self.lock_file = None
+
+        if platform.system() == 'Windows':
+            # Windows: Use a socket bound to localhost
+            self.lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                self.lock_socket.bind(('127.0.0.1', 47777))
+            except OSError:
+                self.lock_socket = None
+                return
+        else:
+            # macOS/Linux: Use a lock file
+            lock_file_path = os.path.join(tempfile.gettempdir(), f'{app_name}.lock')
+            try:
+                self.lock_file = open(lock_file_path, 'w')
+                import fcntl
+                # Use flock for exclusive lock (more reliable)
+                fcntl.flock(self.lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except (IOError, OSError, BlockingIOError) as e:
+                if self.lock_file:
+                    self.lock_file.close()
+                self.lock_file = None
+                return
+
+    def is_already_running(self):
+        """Check if another instance is already running"""
+        if platform.system() == 'Windows':
+            return self.lock_socket is None
+        else:
+            return self.lock_file is None
+
+    def __del__(self):
+        """Cleanup lock resources"""
+        if self.lock_socket:
+            try:
+                self.lock_socket.close()
+            except:
+                pass
+        if self.lock_file:
+            try:
+                import fcntl
+                fcntl.flock(self.lock_file.fileno(), fcntl.LOCK_UN)
+                self.lock_file.close()
+            except:
+                pass
 
 
 def get_default_download_dir():
@@ -672,28 +727,43 @@ Lưu ý:
 
 
 def main():
+    # Check for single instance
+    single_instance = SingleInstance()
+    if single_instance.is_already_running():
+        # Show error dialog
+        root = tk.Tk()
+        root.withdraw()  # Hide main window
+        messagebox.showerror(
+            "Application Already Running",
+            "TruyenFull Downloader is already running.\n\n"
+            "Only one instance of the application can run at a time.\n"
+            "Please close the existing instance before starting a new one."
+        )
+        root.destroy()
+        sys.exit(0)
+
     try:
         print("Starting TruyenFull Downloader GUI...")
         root = tk.Tk()
         print("Root window created")
-        
+
         # Set a background color to ensure visibility
         root.configure(bg='#f0f0f0')
         print("Background configured")
-        
+
         print("Creating GUI application...")
         app = TruyenFullGUI(root)
         print("GUI created, updating window...")
-        
+
         root.update()
         root.update_idletasks()
         print("Window updated, starting mainloop...")
-        
+
         # Force window to be visible
         root.deiconify()
         root.lift()
         root.focus_force()
-        
+
         root.mainloop()
         print("Mainloop ended")
     except Exception as e:
