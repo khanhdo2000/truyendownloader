@@ -908,20 +908,41 @@ class TruyenFullDownloader:
             if epub_filename_base:
                 safe_story_title = epub_filename_base
             else:
-                # Normalize filename - remove special characters but keep Vietnamese
+                # Normalize filename - convert Vietnamese to ASCII
                 import unicodedata
-                # First normalize unicode
-                safe_story_title = unicodedata.normalize('NFC', story_info['title'])
+
+                # First normalize unicode to decomposed form (NFD)
+                safe_story_title = unicodedata.normalize('NFD', story_info['title'])
+
+                # Remove combining characters (accents/diacritics)
+                safe_story_title = ''.join(
+                    char for char in safe_story_title
+                    if unicodedata.category(char) != 'Mn'
+                )
+
+                # Handle special Vietnamese characters that don't decompose properly
+                vietnamese_map = {
+                    'đ': 'd', 'Đ': 'D',
+                    'ð': 'd', 'Ð': 'D',  # Alternative forms
+                }
+                for viet_char, ascii_char in vietnamese_map.items():
+                    safe_story_title = safe_story_title.replace(viet_char, ascii_char)
+
                 # Replace special dashes/hyphens with regular hyphen
                 safe_story_title = safe_story_title.replace('–', '-').replace('—', '-').replace('―', '-')
+
                 # Remove characters that are invalid in filenames
                 safe_story_title = re.sub(r'[<>:"/\\|?*\[\]\(\)\{\}]', '', safe_story_title)
-                # Remove other problematic punctuation but keep Vietnamese chars
+
+                # Remove other problematic punctuation
                 safe_story_title = re.sub(r'[.,!?;:\'""`~@#$%^&*+=]', '', safe_story_title)
+
                 # Replace multiple spaces/hyphens with single hyphen
                 safe_story_title = re.sub(r'[-\s]+', '-', safe_story_title)
+
                 # Remove leading/trailing hyphens and spaces
                 safe_story_title = safe_story_title.strip('-').strip()
+
                 # Limit filename length to avoid filesystem issues
                 if len(safe_story_title) > 200:
                     safe_story_title = safe_story_title[:200].strip('-')
