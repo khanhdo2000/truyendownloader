@@ -149,12 +149,6 @@ def build_app():
         '--collect-all', 'tkinter',   # Collect all tkinter data files
         'truyenfull_gui.py'
     ]
-    
-    # Add icon if available
-    if os.path.exists('icon.icns') and system == 'Darwin':
-        cmd.extend(['--icon', 'icon.icns'])
-    elif os.path.exists('icon.ico') and system == 'Windows':
-        cmd.extend(['--icon', 'icon.ico'])
 
     # Platform-specific adjustments
     if system == 'Darwin':  # macOS
@@ -163,6 +157,9 @@ def build_app():
         cmd.extend([
             '--osx-bundle-identifier', 'com.truyenfull.downloader'
         ])
+        # Add macOS icon
+        if os.path.exists('icon.icns'):
+            cmd.extend(['--icon', 'icon.icns'])
         # Note: macOS version info is typically set via Info.plist, but PyInstaller
         # will use CFBundleShortVersionString from the bundle identifier
     elif system == 'Windows':
@@ -171,6 +168,9 @@ def build_app():
         cmd[cmd.index('truyenfull_downloader.py:.')] = 'truyenfull_downloader.py;.'
         cmd[cmd.index('site_adapters.py:.')] = 'site_adapters.py;.'
         cmd[cmd.index('version.py:.')] = 'version.py;.'
+        # Add Windows icon
+        if os.path.exists('icon.ico'):
+            cmd.extend(['--icon', 'icon.ico'])
         # Windows version info file
         version_info_file = create_windows_version_info(version)
         if version_info_file:

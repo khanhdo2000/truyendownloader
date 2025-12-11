@@ -912,12 +912,15 @@ class TruyenFullDownloader:
                 import unicodedata
                 # First normalize unicode
                 safe_story_title = unicodedata.normalize('NFC', story_info['title'])
+                # Replace special dashes/hyphens with regular hyphen
+                safe_story_title = safe_story_title.replace('–', '-').replace('—', '-').replace('―', '-')
                 # Remove characters that are invalid in filenames
-                # Keep alphanumeric, spaces, hyphens, and Vietnamese characters
-                safe_story_title = re.sub(r'[<>:"/\\|?*\[\]\(\)]', '', safe_story_title)
+                safe_story_title = re.sub(r'[<>:"/\\|?*\[\]\(\)\{\}]', '', safe_story_title)
+                # Remove other problematic punctuation but keep Vietnamese chars
+                safe_story_title = re.sub(r'[.,!?;:\'""`~@#$%^&*+=]', '', safe_story_title)
                 # Replace multiple spaces/hyphens with single hyphen
                 safe_story_title = re.sub(r'[-\s]+', '-', safe_story_title)
-                # Remove leading/trailing hyphens
+                # Remove leading/trailing hyphens and spaces
                 safe_story_title = safe_story_title.strip('-').strip()
                 # Limit filename length to avoid filesystem issues
                 if len(safe_story_title) > 200:
